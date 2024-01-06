@@ -6,7 +6,11 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.psi.impl.source.tree.injected.InjectedLanguageEditorUtil
 
-class MultiHighlightClearAction : DumbAwareAction() {
+class MultiHighlightClearAction : DumbAwareAction(
+  "Clear in Current Editor",
+  "MultiHighlight: clear highlights in current editor",
+  null
+) {
 
   init {
     setInjectedContext(true)

@@ -5,6 +5,7 @@ import com.github.huoguangjin.multihighlight.config.TextAttributesFactory
 import com.github.huoguangjin.multihighlight.highlight.MultiHighlightHandler
 import com.github.huoguangjin.multihighlight.highlight.MultiHighlightManager
 import com.github.huoguangjin.multihighlight.highlight.MultiHighlightTextHandler
+import com.github.huoguangjin.multihighlight.ui.ColoredCircleIcon
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -16,7 +17,6 @@ import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.ListPopup
 import com.intellij.openapi.ui.popup.PopupStep
 import com.intellij.openapi.ui.popup.util.BaseListPopupStep
@@ -27,7 +27,11 @@ import java.awt.event.ActionEvent
 import javax.swing.AbstractAction
 import javax.swing.Icon
 
-class MultiHighlightWithColorAction : DumbAwareAction() {
+class MultiHighlightWithColorAction(val textAttr: NamedTextAttr, icon: ColoredCircleIcon) : DumbAwareAction(
+  textAttr.name,
+  "MultiHighlight: toggle highlight at caret with color ${textAttr.name}",
+  icon
+) {
 
   init {
     setInjectedContext(true)
@@ -48,15 +52,28 @@ class MultiHighlightWithColorAction : DumbAwareAction() {
       if (multiHighlightManager.tryRemoveHighlighterAtCaret(editor)) {
         return@executeCommand
       }
+//      val namedTextAttrs = TextAttributesFactory.getTextAttrs()
+//      val colorList = namedTextAttrs.mapIndexed(::NamedTextAttrItem)
+//      val listPopupStep = ColorListPopupStep(project, editor, "Highlight with color..", colorList).apply {
+//        defaultOptionIndex = TextAttributesFactory.getNextTextAttrIndex()
+//      }
+//      JBPopupFactory.getInstance()
+//        .createListPopup(listPopupStep).also(::addKeyStrokeAction)
+//        .showInBestPositionFor(editor)
 
-      val namedTextAttrs = TextAttributesFactory.getTextAttrs()
-      val colorList = namedTextAttrs.mapIndexed(::NamedTextAttrItem)
-      val listPopupStep = ColorListPopupStep(project, editor, "Highlight with color..", colorList).apply {
-        defaultOptionIndex = TextAttributesFactory.getNextTextAttrIndex()
+      try {
+        val psiFile = PsiDocumentManager.getInstance(project).getPsiFile(editor.document)
+        val selectionModel = editor.selectionModel
+
+        if (psiFile != null && !selectionModel.hasSelection()) {
+          MultiHighlightHandler(project, editor, psiFile, textAttr).highlight()
+        } else {
+          MultiHighlightTextHandler(project, editor, textAttr).highlight()
+        }
+      } catch (ex: IndexNotReadyException) {
+        DumbService.getInstance(project)
+          .showDumbModeNotification("MultiHighlight requires indices and cannot be performed until they are built")
       }
-      JBPopupFactory.getInstance()
-        .createListPopup(listPopupStep).also(::addKeyStrokeAction)
-        .showInBestPositionFor(editor)
     }, "MultiHighlight", null)
   }
 

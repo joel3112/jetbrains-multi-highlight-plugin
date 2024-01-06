@@ -11,7 +11,11 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.psi.PsiDocumentManager
 
-class MultiHighlightAction : DumbAwareAction() {
+class MultiHighlightAction : DumbAwareAction(
+  "Toggle Highlight",
+  "MultiHighlight: toggle highlight at caret",
+  null
+) {
 
   init {
     setInjectedContext(true)
