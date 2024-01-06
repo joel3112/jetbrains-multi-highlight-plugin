@@ -27,7 +27,11 @@ import java.awt.event.ActionEvent
 import javax.swing.AbstractAction
 import javax.swing.Icon
 
-class MultiHighlightWithColorAction : DumbAwareAction() {
+class MultiHighlightWithColorAction : DumbAwareAction(
+  "Toggle highlight with Color",
+  "MultiHighlight: toggle highlight at caret with Color",
+  null
+) {
 
   init {
     setInjectedContext(true)
