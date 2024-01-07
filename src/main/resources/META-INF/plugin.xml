@@ -12,19 +12,27 @@
         <applicationService serviceImplementation="com.github.huoguangjin.multihighlight.config.MultiHighlightConfig"/>
         <applicationConfigurable instance="com.github.huoguangjin.multihighlight.ui.MultiHighlightConfigurable"/>
 
-        <applicationService serviceImplementation="com.github.huoguangjin.multihighlight.highlight.MultiHighlightManager"/>
+        <applicationService
+                serviceImplementation="com.github.huoguangjin.multihighlight.highlight.MultiHighlightManager"/>
 
         <editorFactoryListener implementation="com.github.huoguangjin.multihighlight.highlight.MultiHighlightManager"/>
     </extensions>
 
     <actions>
-        <group id="MultiHighlight.Group.Main"
+        <group id="com.github.huoguangjin.multihighlight.action.MultiHighlightActionGroup"
                class="com.github.huoguangjin.multihighlight.action.MultiHighlightActionGroup"
                text="MultiHighlight"
                description="Group of MultiHighlight actions"
+               icon="/icons/highlight.svg"
                popup="true"
         >
             <add-to-group group-id="EditorPopupMenu" anchor="before" relative-to-action="AddToFavorites"/>
         </group>
+
+        <action class="com.github.huoguangjin.multihighlight.action.MultiHighlightAction"
+                id="com.github.huoguangjin.multihighlight.action.MultiHighlightAction"
+                text="Toggle Highlight"
+                description="MultiHighlight: Toggle HighlightMultiHighlight: toggle highlight at caret"
+                icon="/icons/highlight.svg" />
     </actions>
 </idea-plugin>
