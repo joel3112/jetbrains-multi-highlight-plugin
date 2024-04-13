@@ -3,15 +3,17 @@ package com.github.huoguangjin.multihighlight.action
 import com.github.huoguangjin.multihighlight.highlight.MultiHighlightHandler
 import com.github.huoguangjin.multihighlight.highlight.MultiHighlightManager
 import com.github.huoguangjin.multihighlight.highlight.MultiHighlightTextHandler
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.command.CommandProcessor
-import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.psi.PsiDocumentManager
+import org.jetbrains.annotations.NotNull
 
-class MultiHighlightAction : DumbAwareAction(
+class MultiHighlightAction : AnAction(
   "Toggle Highlight",
   "MultiHighlight: toggle highlight at caret",
   null
@@ -52,5 +54,10 @@ class MultiHighlightAction : DumbAwareAction(
           .showDumbModeNotification("MultiHighlight requires indices and cannot be performed until they are built")
       }
     }, "MultiHighlight", null)
+  }
+
+  @NotNull
+  override fun getActionUpdateThread(): ActionUpdateThread {
+    return ActionUpdateThread.EDT
   }
 }

@@ -1,12 +1,15 @@
 package com.github.huoguangjin.multihighlight.action
 
 import com.github.huoguangjin.multihighlight.highlight.MultiHighlightManager
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.psi.impl.source.tree.injected.InjectedLanguageEditorUtil
+import org.jetbrains.annotations.NotNull
 
-class MultiHighlightClearAction : DumbAwareAction(
+
+class MultiHighlightClearAction : AnAction(
   "Clear in Current Editor",
   "MultiHighlight: clear highlights in current editor",
   null
@@ -25,5 +28,10 @@ class MultiHighlightClearAction : DumbAwareAction(
 
     val multiHighlightManager = MultiHighlightManager.getInstance()
     multiHighlightManager.removeAllHighlighters(editor)
+  }
+
+  @NotNull
+  override fun getActionUpdateThread(): ActionUpdateThread {
+    return ActionUpdateThread.EDT
   }
 }
