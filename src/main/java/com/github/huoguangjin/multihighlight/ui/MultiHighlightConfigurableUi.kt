@@ -5,20 +5,19 @@ import com.github.huoguangjin.multihighlight.config.NamedTextAttr
 import com.intellij.icons.AllIcons
 import com.intellij.idea.ActionsBundle
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.options.ConfigurableUi
+import com.intellij.openapi.project.DumbAwareAction
+import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.Messages
-import com.intellij.ui.DoubleClickListener
-import com.intellij.ui.IdeBorderFactory
-import com.intellij.ui.JBSplitter
-import com.intellij.ui.ToolbarDecorator
-import com.intellij.ui.ToolbarDecorator.ElementActionButton
+import com.intellij.ui.*
+import com.intellij.ui.dsl.builder.Align
+import com.intellij.ui.dsl.builder.bindSelected
+import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.TableView
-import java.awt.BorderLayout
 import java.awt.event.MouseEvent
-import javax.swing.JComponent
-import javax.swing.JPanel
-import javax.swing.ListSelectionModel
+import javax.swing.*
 
 class MultiHighlightConfigurableUi : ConfigurableUi<MultiHighlightConfig>, Disposable {
 
@@ -26,7 +25,7 @@ class MultiHighlightConfigurableUi : ConfigurableUi<MultiHighlightConfig>, Dispo
   private val namedTextAttrTable = TableView(model).apply {
     isStriped = true
     setShowColumns(false)
-    setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
+    setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION)
   }
 
   private val chooserPanel: ChooserPanel = ColorChooserPanel().apply {
@@ -34,6 +33,58 @@ class MultiHighlightConfigurableUi : ConfigurableUi<MultiHighlightConfig>, Dispo
   }
 
   private val previewPanel: PreviewPanel = ColorPreviewPanel()
+
+  private val rootPanel: DialogPanel = panel {
+    val copyAction = DumbAwareAction.create(
+      ActionsBundle.message("action.EditorCopy.text"),
+      AllIcons.Actions.Copy
+    ) {
+      doCopy()
+    }
+
+    val tableWithToolbar: JPanel = ToolbarDecorator.createDecorator(namedTextAttrTable)
+      .setAddAction { doAdd() }
+      .setEditAction { doEdit() }
+      .addExtraAction(copyAction)
+      .createPanel()
+
+    val ideCopyAction = ActionManager.getInstance().getAction(IdeActions.ACTION_COPY)
+    copyAction.registerCustomShortcutSet(ideCopyAction.shortcutSet, tableWithToolbar)
+
+    val chooserAndPreviewPanel: JPanel = JBSplitter(true, 0.3f).apply {
+      firstComponent = chooserPanel.panel
+      secondComponent = previewPanel.panel
+    }
+
+    val mainPanel: JPanel = JBSplitter(false, 0.3f).apply {
+      firstComponent = tableWithToolbar
+      secondComponent = chooserAndPreviewPanel
+    }
+
+    val config = MultiHighlightConfig.getInstance()
+
+    row {
+      cell(mainPanel).align(Align.FILL)
+        .onIsModified {
+          model.items != config.namedTextAttrs
+        }
+        .onApply {
+          config.updateTextAttrs(model.items.map(NamedTextAttr::clone))
+        }
+        .onReset {
+          model.items = config.namedTextAttrs.map(NamedTextAttr::clone)
+        }
+    }.resizableRow()
+
+    group(indent = false) {
+      row {
+        contextHelp("MultiHighlight will try to highlight the plain text if no identifiers are found")
+          .label("Highlight plain text:")
+        checkBox("Match case").bindSelected(config::matchCase)
+        checkBox("Match words").bindSelected(config::matchWord)
+      }
+    }
+  }
 
   init {
     model.addTableModelListener {
@@ -58,35 +109,7 @@ class MultiHighlightConfigurableUi : ConfigurableUi<MultiHighlightConfig>, Dispo
     }
   }
 
-  override fun getComponent(): JComponent {
-    val tableWithToolbar: JPanel = ToolbarDecorator.createDecorator(namedTextAttrTable)
-      .setAddAction { doAdd() }
-      .setEditAction { doEdit() }
-      .addExtraActions(object : ElementActionButton(
-        ActionsBundle.message("action.EditorCopy.text"),
-        AllIcons.Actions.Copy
-      ) {
-        override fun actionPerformed(e: AnActionEvent) {
-          doCopy()
-        }
-      })
-      .createPanel()
-
-    val chooserAndPreviewPanel: JPanel = JBSplitter(true, 0.3f).apply {
-      firstComponent = chooserPanel.panel
-      secondComponent = previewPanel.panel
-    }
-
-    val mainPanel: JPanel = JBSplitter(false, 0.3f).apply {
-      firstComponent = tableWithToolbar
-      secondComponent = chooserAndPreviewPanel
-    }
-
-    return JPanel(BorderLayout(0, 10)).apply {
-      add(mainPanel, BorderLayout.CENTER)
-      border = IdeBorderFactory.createTitledBorder("MultiHighlight Colors", false)
-    }
-  }
+  override fun getComponent(): JComponent = rootPanel
 
   private fun updateChooserPanel() {
     val selected = namedTextAttrTable.selectedObject
@@ -123,6 +146,18 @@ class MultiHighlightConfigurableUi : ConfigurableUi<MultiHighlightConfig>, Dispo
 
   private fun doCopy() {
     val selected = namedTextAttrTable.selectedObject ?: return
+
+    val selectRows = namedTextAttrTable.selectedRows
+    if (selectRows.size > 1) {
+      selectRows.forEach {
+        val row = namedTextAttrTable.getRow(it)
+        model.insertRow(it + selectRows.size, NamedTextAttr("${row.name} copy", row))
+      }
+      val rowIndex = selectRows.last() + 1
+      namedTextAttrTable.setRowSelectionInterval(rowIndex, rowIndex + selectRows.size - 1)
+      return
+    }
+
     val name = askForColorName("${selected.name} copy") ?: return
 
     val newRow = namedTextAttrTable.selectedRow + 1
@@ -135,24 +170,15 @@ class MultiHighlightConfigurableUi : ConfigurableUi<MultiHighlightConfig>, Dispo
   }
 
   override fun isModified(settings: MultiHighlightConfig): Boolean {
-    val current = model.items
-    val origin = settings.namedTextAttrs
-    return current != origin
+    return rootPanel.isModified()
   }
 
   override fun apply(settings: MultiHighlightConfig) {
-    val lastSelectedRow = namedTextAttrTable.selectedRow
-
-    val textAttrs = model.items.map(NamedTextAttr::clone)
-    settings.updateTextAttrs(textAttrs)
-
-    if (lastSelectedRow in 0..namedTextAttrTable.rowCount) {
-      namedTextAttrTable.setRowSelectionInterval(lastSelectedRow, lastSelectedRow)
-    }
+    rootPanel.apply()
   }
 
   override fun reset(settings: MultiHighlightConfig) {
-    model.items = settings.namedTextAttrs.map(NamedTextAttr::clone)
+    rootPanel.reset()
   }
 
   override fun dispose() {
